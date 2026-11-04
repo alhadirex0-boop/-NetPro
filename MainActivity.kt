@@ -48,18 +48,21 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun NetProScreen(context: Context) {
-    var signal by remember { mutableStateOf("--") }
+    var signal by remember { mutableStateOf(-100) }
     var network by remember { mutableStateOf("غير متصل") }
+    var hasSignal by remember { mutableStateOf(false) }
 
     val updateSignal = {
         val wifi = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
         val info = wifi.connectionInfo
         if (info != null && info.ssid != null && info.ssid != "<unknown ssid>") {
-            signal = "${info.rssi}"
+            signal = info.rssi
             network = info.ssid.replace("\"", "")
+            hasSignal = true
         } else {
-            signal = "--"
+            signal = 0
             network = "غير متصل"
+            hasSignal = false
         }
     }
 
@@ -69,6 +72,21 @@ fun NetProScreen(context: Context) {
         if (granted) {
             updateSignal()
         }
+    }
+
+    // تحديد اللون الذكي بناءً على قوة الإشارة (dBm)
+    val signalColor = when {
+        !hasSignal -> Color.Gray
+        signal >= -65 -> Color(0xFF10B981) // أخضر (إشارة ممتازة)
+        signal >= -80 -> Color(0xFFF59E0B) // أصفر (إشارة متوسطة)
+        else -> Color(0xFFEF4444)           // أحمر (إشارة ضعيفة)
+    }
+
+    val signalStatusText = when {
+        !hasSignal -> "غير متصل"
+        signal >= -65 -> "إشارة ممتازة"
+        signal >= -80 -> "إشارة متوسطة"
+        else -> "إشارة ضعيفة"
     }
 
     Surface(
@@ -88,13 +106,13 @@ fun NetProScreen(context: Context) {
                     modifier = Modifier
                         .size(65.dp)
                         .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
+                        .background(signalColor.copy(alpha = 0.2f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Default.Wifi,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = signalColor,
                         modifier = Modifier.size(35.dp)
                     )
                 }
@@ -124,24 +142,24 @@ fun NetProScreen(context: Context) {
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.SignalWifi4Bar, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                        Icon(Icons.Default.SignalWifi4Bar, contentDescription = null, tint = signalColor, modifier = Modifier.size(20.dp))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("قوة إشارة Wi-Fi", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+                        Text(signalStatusText, style = MaterialTheme.typography.bodyMedium, color = signalColor, fontWeight = FontWeight.SemiBold)
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.Center) {
                         Text(
-                            text = signal,
+                            text = if (hasSignal) "$signal" else "--",
                             style = MaterialTheme.typography.displayLarge.copy(fontWeight = FontWeight.Bold, fontSize = 64.sp),
                             color = MaterialTheme.colorScheme.onSurface
                         )
-                        if (signal != "--") {
+                        if (hasSignal) {
                             Text(
                                 text = " dBm",
                                 style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.primary,
+                                color = signalColor,
                                 modifier = Modifier.padding(bottom = 12.dp)
                             )
                         }
