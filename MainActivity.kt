@@ -12,7 +12,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.NetworkCheck
 import androidx.compose.material.icons.filled.SignalWifi4Bar
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -26,6 +28,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import java.net.InetAddress
+import java.nio.ByteOrder
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -50,6 +54,8 @@ class MainActivity : ComponentActivity() {
 fun NetProScreen(context: Context) {
     var signal by remember { mutableStateOf(-100) }
     var network by remember { mutableStateOf("غير متصل") }
+    var linkSpeed by remember { mutableStateOf("--") }
+    var ipAddress by remember { mutableStateOf("--") }
     var hasSignal by remember { mutableStateOf(false) }
 
     val updateSignal = {
@@ -58,10 +64,23 @@ fun NetProScreen(context: Context) {
         if (info != null && info.ssid != null && info.ssid != "<unknown ssid>") {
             signal = info.rssi
             network = info.ssid.replace("\"", "")
+            linkSpeed = "${info.linkSpeed} Mbps"
+            
+            // تحويل عنوان الـ IP من رقم صحيح إلى نصي
+            val ipInt = info.ipAddress
+            ipAddress = if (ipInt != 0) {
+                InetAddress.getByAddress(
+                    ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(ipInt).array()
+                ).hostAddress ?: "غير معروف"
+            } else {
+                "غير معروف"
+            }
             hasSignal = true
         } else {
             signal = 0
             network = "غير متصل"
+            linkSpeed = "--"
+            ipAddress = "--"
             hasSignal = false
         }
     }
@@ -74,12 +93,12 @@ fun NetProScreen(context: Context) {
         }
     }
 
-    // تحديد اللون الذكي بناءً على قوة الإشارة (dBm)
+    // الألوان الذكية للإشارة
     val signalColor = when {
         !hasSignal -> Color.Gray
-        signal >= -65 -> Color(0xFF10B981) // أخضر (إشارة ممتازة)
-        signal >= -80 -> Color(0xFFF59E0B) // أصفر (إشارة متوسطة)
-        else -> Color(0xFFEF4444)           // أحمر (إشارة ضعيفة)
+        signal >= -65 -> Color(0xFF10B981) // أخضر (ممتاز)
+        signal >= -80 -> Color(0xFFF59E0B) // أصفر (متوسط)
+        else -> Color(0xFFEF4444)           // أحمر (ضعيف)
     }
 
     val signalStatusText = when {
@@ -101,10 +120,10 @@ fun NetProScreen(context: Context) {
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             // Header
-            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(top = 20.dp)) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(top = 10.dp)) {
                 Box(
                     modifier = Modifier
-                        .size(65.dp)
+                        .size(60.dp)
                         .clip(CircleShape)
                         .background(signalColor.copy(alpha = 0.2f)),
                     contentAlignment = Alignment.Center
@@ -113,10 +132,10 @@ fun NetProScreen(context: Context) {
                         imageVector = Icons.Default.Wifi,
                         contentDescription = null,
                         tint = signalColor,
-                        modifier = Modifier.size(35.dp)
+                        modifier = Modifier.size(30.dp)
                     )
                 }
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = "NetPro",
                     style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
@@ -127,32 +146,32 @@ fun NetProScreen(context: Context) {
                 )
             }
 
-            // Main Card
+            // Main Signal Card
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .shadow(10.dp, RoundedCornerShape(24.dp)),
-                shape = RoundedCornerShape(24.dp),
+                    .shadow(10.dp, RoundedCornerShape(20.dp)),
+                shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(24.dp),
+                        .padding(20.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.SignalWifi4Bar, contentDescription = null, tint = signalColor, modifier = Modifier.size(20.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Icon(Icons.Default.SignalWifi4Bar, contentDescription = null, tint = signalColor, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
                         Text(signalStatusText, style = MaterialTheme.typography.bodyMedium, color = signalColor, fontWeight = FontWeight.SemiBold)
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
                     Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.Center) {
                         Text(
                             text = if (hasSignal) "$signal" else "--",
-                            style = MaterialTheme.typography.displayLarge.copy(fontWeight = FontWeight.Bold, fontSize = 64.sp),
+                            style = MaterialTheme.typography.displayLarge.copy(fontWeight = FontWeight.Bold, fontSize = 56.sp),
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         if (hasSignal) {
@@ -160,23 +179,63 @@ fun NetProScreen(context: Context) {
                                 text = " dBm",
                                 style = MaterialTheme.typography.titleMedium,
                                 color = signalColor,
-                                modifier = Modifier.padding(bottom = 12.dp)
+                                modifier = Modifier.padding(bottom = 10.dp)
                             )
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
                     Divider(color = Color.White.copy(alpha = 0.05f), thickness = 1.dp)
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
 
-                    Text("اسم الشبكة", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Text("اسم الشبكة المتصلة", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = network,
                         style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
                         textAlign = TextAlign.Center,
                         color = MaterialTheme.colorScheme.primary
                     )
+                }
+            }
+
+            // Advanced Network Details Card
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .shadow(6.dp, RoundedCornerShape(16.dp)),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceAround,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Link Speed
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(Icons.Default.Speed, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text("سرعة الربط", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                        Text(linkSpeed, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                    }
+
+                    Divider(
+                        modifier = Modifier
+                            .height(35.dp)
+                            .width(1.dp),
+                        color = Color.White.copy(alpha = 0.1f)
+                    )
+
+                    // IP Address
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(Icons.Default.NetworkCheck, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text("عنوان IP", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                        Text(ipAddress, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
 
@@ -191,15 +250,15 @@ fun NetProScreen(context: Context) {
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(56.dp),
+                    .height(50.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) {
-                Text("قياس قوة الإشارة", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+                Text("تحديث بيانات الشبكة", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
             }
 
             // Footer
-            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(bottom = 10.dp)) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(bottom = 5.dp)) {
                 Text("Developed & Designed by Alhadi Rex", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                 Spacer(modifier = Modifier.height(2.dp))
                 Text("All Rights Reserved 2026 ©", style = MaterialTheme.typography.labelSmall, color = Color.Gray.copy(alpha = 0.7f))
